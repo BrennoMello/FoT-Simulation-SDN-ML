@@ -13,7 +13,7 @@ URL: http://www.cs.upc.edu/~GAVALDA/papers/adwin06.pdf
 import math
 import cmath
 
-from .detector import SuperDetector
+from detector import SuperDetector
 
 
 class ListItem:
