@@ -8,17 +8,17 @@ class DataSetReader(object):
 
     def __init__(self, direc, sensorName, moteId):
 		self.direc = direc
-        self.SensorName = sensorName
-        self.MoteId = moteId 
-        self.open_data = None
-        self.lineTemp = 0
-        self.lineHumid = 0
-        self.lineLigh = 0
-        self.lineVolt = 0
-        self.countLine = 0
-        self.value = 0
-        logging.basicConfig(filename = 'app.log', level = logging.INFO)
-        self.reader_data()
+		self.SensorName = sensorName
+		self.MoteId = moteId 
+		self.open_data = None
+		self.lineTemp = 0
+		self.lineHumid = 0
+		self.lineLigh = 0
+		self.lineVolt = 0
+		self.countLine = 0
+		self.value = 0
+		logging.basicConfig(filename = 'app.log', level = logging.INFO)
+		self.reader_data()
 	
 	#chunksize=100
 	#iterator=True

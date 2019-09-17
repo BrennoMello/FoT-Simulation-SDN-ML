@@ -67,6 +67,9 @@ class Th(Thread):
 					ini=timeit.default_timer()
 					a=self.publish()
 					fim=timeit.default_timer()
+					print self.get_time_publish()
+					print float(fim-ini)
+					#print float(self.get_time_publish())-float(fim-ini)
 					time.sleep(float(self.get_time_publish())-float(fim-ini))
 					
 				except Exception as inst:
