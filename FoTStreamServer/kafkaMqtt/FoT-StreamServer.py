@@ -1,16 +1,19 @@
 from confluent_kafka import Consumer, KafkaError
-import time, json, dateutil.parser, datetime
+import time, json, dateutil.parser
 from threading import Thread
 import sys
 import argparse
+from datetime import datetime
 sys.path.insert(0, '/home/mininet/FoT-Simulation/FoTStreamServer/tsDeep')
 sys.path.insert(0, '/home/mininet/FoT-Simulation/FoTStreamServer/conceptdrift/algorithms/')
 import series
-import adwin
 import cusum
+import gc
+import json
 #import pywt
 import Wavelet
 import threading
+from memory_profiler import profile
 
 
 ############## Parse Arguments
@@ -49,15 +52,22 @@ class SensorKafkaConsumer(object):
         'heartbeat.interval.ms': 3600000}
 		#self.kafka_consumer = Consumer(({'bootstrap.servers': kafka_local,'group.id': group,'auto.offset.reset': 'earliest'}))
 		self.kafka_consumer = Consumer(conf)
+		print(kafka_local)
 		self.gatewaySensoresData = {}
 		self.modelsLSTM = {}
 		self.dicDetectors = {}
 		self.inicializationModel = {}
 		self.verifyTrain = {}
+		self.path_log = ""
         ##self.loopKafka()
 		
+		self.create_file_log()
 		
+
+	@profile	
 	def process_messages(self, jsonData):
+		#lock = threading.Lock() 
+		#lock.acquire() 
 		#{"gatewayID": "h1", "values": [172.7504292845607, 172.7504292], "name": "ufbaino15"}
 		if jsonData["gatewayID"] in self.gatewaySensoresData:
 			for value in jsonData["values"]:
@@ -65,7 +75,9 @@ class SensorKafkaConsumer(object):
 			print ("insert")
 		else:
 			self.gatewaySensoresData[jsonData["gatewayID"]] = []
+
 			self.dicDetectors[jsonData["gatewayID"]] = cusum.CUSUM()
+
 			self.modelsLSTM[jsonData["gatewayID"]] = series.modelLSTM(jsonData["gatewayID"])
 			self.inicializationModel[jsonData["gatewayID"]] = False
 			#self.verifyTrain[jsonData["gatewayID"]] == False
@@ -73,19 +85,40 @@ class SensorKafkaConsumer(object):
 		
 		print(self.gatewaySensoresData[jsonData["gatewayID"]])
 		self.check_windows()
-	
+		#lock.release() 
+
+	@profile
 	def train_lstm(self, data, indexGateway):
 		self.modelsLSTM[indexGateway].create_model(data)
 	
+	def create_file_log(self):
+		self.path_log = "server-log-data-"+'Timestamp-{:%Y-%m-%d-%H-%M-%S}'.format(datetime.now())
+		f = open(self.path_log, "w+")
+		f.close()
 	
+	def save_file_log(self, json_log):
+		print ("save log")
+		file_log = open(self.path_log, "a")
+		#file_log.write(json_log)
+		file_log.write(json.dumps(json_log))
+		file_log.write('\n')
+		#json.dump(json_log, file_log)
+		file_log.close()
+		
+	@profile
 	def check_windows(self):
 		for indexGateway in self.gatewaySensoresData:
 			#print len(sensoresData[indexSensor])
-			if len(self.gatewaySensoresData[indexGateway]) >= 100:
+			if len(self.gatewaySensoresData[indexGateway]) >= 50:
+
 				print ('------------------------  detecting concept drift ' +  indexGateway)
 								
 				print("Compĺete List")
 				print(self.gatewaySensoresData[indexGateway])
+				
+				#salvar size do vetor
+				json_log = {"gateway_name": indexGateway, "data": self.gatewaySensoresData[indexGateway], "size": sys.getsizeof(self.gatewaySensoresData[indexGateway])}
+				self.save_file_log(json_log)
 				
 				#cA, cD = pywt.dwt(self.gatewaySensoresData[indexGateway], 'haar')
 				#print (cA)
@@ -136,8 +169,9 @@ class SensorKafkaConsumer(object):
 					self.modelsLSTM[indexGateway].calc_rmse(cA[1])		
 					
 				self.gatewaySensoresData[indexGateway] = []
-	
-	
+				#del self.gatewaySensoresData[indexGateway]
+				#gc.collect()
+	@profile
 	def run(self):
 		#consumer.subscribe(pattern='^awesome.*')
 		
@@ -164,10 +198,6 @@ class SensorKafkaConsumer(object):
 			print('Received message: {}'.format(message.value().decode('utf-8')))
             
 			jsonData = json.loads(message.value().decode('utf-8'))
-            
-            
-            
-			print("Aqui")
             
 			self.process_messages(jsonData)
 			    

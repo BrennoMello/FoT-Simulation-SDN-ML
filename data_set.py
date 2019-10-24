@@ -43,8 +43,9 @@ class DataSetReader(object):
         #print("Qtd lines " + str(self.count_row))
         if(sensor=="temperatureSensor"):
             try:
-				
-				if(self.lineTemp==self.count_row-2):
+				print self.lineTemp
+				print self.count_row-3
+				if(self.lineTemp==self.count_row-3):
 				#if(self.lineTemp==50):
 					#self.reader_data()
 					self.lineTemp = 0

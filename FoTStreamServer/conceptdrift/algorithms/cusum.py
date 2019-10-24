@@ -16,8 +16,9 @@ from detector import SuperDetector
 class CUSUM(SuperDetector):
 	"""The Cumulative Sum (CUSUM) drift detection method class."""
 
-	def __init__(self, min_instance=30, delta=0.005, lambda_=50):
 
+	def __init__(self, min_instance=50, delta=0.001, lambda_=50):
+		
 		super(CUSUM, self).__init__()
 
 		self.MINIMUM_NUM_INSTANCES = min_instance
@@ -53,6 +54,7 @@ class CUSUM(SuperDetector):
 		self.m_n = 1
 		self.x_mean = 0
 		self.sum = 0
+
 
 	def get_settings(self):
 		return [

@@ -8,12 +8,16 @@ from threading import Thread
 import argparse
 import fileinput
 import data_set 
+import json
 from FoTStreamServer.conceptdrift.algorithms import cusum
-from FoTStreamServer.conceptdrift.algorithms import adwin
+#from FoTStreamServer.conceptdrift.algorithms import adwin
 from traceback import print_exc
 from kafka import KafkaProducer
 #import pywt
 from FoTStreamServer.kafkaMqtt import Wavelet
+from datetime import datetime
+from traceback import print_exc
+
 
 ############## Parse Arguments
 parser = argparse.ArgumentParser(prog='FoT-StreamGateway', usage='%(prog)s [options]', description='FoT-Stream Gateway')
@@ -23,9 +27,12 @@ parser.add_argument('-p','--port', type=str, help='Broker Ports',required=True)
 
 args = parser.parse_args()
 
+args.name
+
 brokerMQTT = 'localhost'
 portBrokerMQTT = 1883
 kafka_ServerIp = args.ip+':'+args.port
+print kafka_ServerIp
 #kafka_ServerPort = args.port
 keepAliveBrokerMQTT = 60
 client = mqtt.Client(client_id = '', clean_session=True, userdata=None, protocol = mqtt.MQTTv31)
@@ -36,7 +43,9 @@ producerKafka = KafkaProducer(bootstrap_servers=kafka_ServerIp)
 sensoresData = {}
 dicDetectors = {}
 objWavelet = Wavelet.Wavelet()
+inicializationConceptDrift = {}
 
+path_log = ""
 # funcao chamada quando a conexao for realizada, sendo
 # entao realizada a subscricao
 def on_connect(client, userdata, flags, rc):
@@ -49,8 +58,9 @@ def on_connect(client, userdata, flags, rc):
 # funcao chamada quando uma nova mensagem do topico eh gerada
 def on_message(client, userdata, msg):
     # decodificando o valor recebido
-    #v = unpack(">H",msg.payload)[0]
-    #print msg.topic + "/" + str(v)
+	#v = unpack(">H",msg.payload)[0]
+	#print (msg.topic + "/" + str(v))
+	#print ("New Message")
 	try:
 		#print (msg.payload)
 		dataRaw = json.loads(msg.payload)
@@ -76,7 +86,8 @@ def insert_window(sensor, data):
 			#print "insert"
 		else:
 			sensoresData[sensor] = []
-			dicDetectors[sensor] = adwin.ADWINChangeDetector()
+			dicDetectors[sensor] = cusum.CUSUM()
+			inicializationConceptDrift[sensor] = False
 			#print "new"
 		
 		#dicDetectors[sensor].run(data)
@@ -101,6 +112,11 @@ def check_windows():
 			print("Complete List")
 			print(sensoresData[indexSensor])
 			
+			#salvar size do vetor
+			json_log = {"sensor_name": indexSensor,"data": sensoresData[indexSensor], "size": sys.getsizeof(sensoresData[indexSensor])}
+			save_file_log(json_log)
+				
+			
 			#cA, cD = pywt.dwt(sensoresData[indexSensor], 'haar')
 			#print (cA)
 			#print (cD)
@@ -119,7 +135,8 @@ def check_windows():
 					sendMessaKafka = True
 			
 			
-			if sendMessaKafka == True:			
+			if (sendMessaKafka == True or inicializationConceptDrift[indexSensor] == False):
+				inicializationConceptDrift[indexSensor] = True			
 				print 'send message kafka server ' + indexSensor
 				json_message = {'gatewayID':args.name ,'name':indexSensor, 'values':listMessageKafkaCa}
 				print(json_message)
@@ -166,19 +183,37 @@ class to_object(object):
 	def __init__(self, j):
 		self.__dict__ = json.loads(j)
 
+def create_file_log():
+	global path_log
+	f = open(path_log, "w+")
+	f.close()
+	
+def save_file_log(json_log):
+	print ("save log")
+	file_log = open(path_log, "a")
+	#file_log.write(json_log)
+	file_log.write(json.dumps(json_log))
+	file_log.write('\n')
+	#json.dump(json_log, file_log)
+	file_log.close()
+
 def config_mqtt():
-	global brokerMQTT, portBrokerMQTT, keepAliveBrokerMQTT, client
+	global brokerMQTT, portBrokerMQTT, keepAliveBrokerMQTT, client, path_log, args
 	try:
 			
 		print("Init FoT-Stream Gateway")
 		#cria um cliente para supervisao
-			
+		path_log = args.name+"-gateway-log-data-"+'Timestamp-{:%Y-%m-%d-%H-%M-%S}'.format(datetime.now())
+		create_file_log()
 		client.on_connect = on_connect
 		client.on_message = on_message
 		client.connect(brokerMQTT, portBrokerMQTT, keepAliveBrokerMQTT)
+		
 		client.loop_forever()
         
 	except Exception as inst:
+		
+		print_exc()
 		print(inst)
 		print "\nCtrl+C leav..."
 		sys.exit(0)

@@ -130,7 +130,8 @@ def init_sensors(net):
 		term = net.get(d[i].name)
 		#term.cmd('screen -S virtual-dev')
 		#term.cmd('screen -r virtual-dev')
-		term.cmd('cd /home/mininet/FoT-Simulation; python2.7 virtual_dev.py -n '+ass[i].name+' -s temperatureSensor -p '+args.port+' -i '+ass[i].gateway+' -d '+args.direc+ ' -m  ' + d[i].moteid +' > virtual-device &')
+		term.cmd('cd /home/mininet/FoT-Simulation; python2.7 virtual_dev.py -n '+ass[i].name+' -s temperatureSensor -p '+args.port+' -i '+ass[i].gateway+' -d '+args.direc+ ' -m  ' + d[i].moteid +' > virtual-device-'+ d[i].name +'&')
+
 
 	time.sleep(7)
 
@@ -165,7 +166,7 @@ def init_gateways(net):
 		gateway.cmd('cd /home/mininet/FoT-Simulation; python2.7 sc_net.py -n '+g[i].name+' &')
 		time.sleep(5)
 		print('python2.7 FoT-StreamGateway.py -n '+ g[i].name + ' -i ' + ass[i].server +' -p 9092 > gateway-log-'+g[i].name+ ' &')
-		gateway.cmd('cd /home/mininet/FoT-Simulation; python2.7 FoT-StreamGateway.py -n '+ g[i].name + ' -i ' + ass[i].server +' -p 9092 > gateway-log-'+g[i].name+' &')	
+		#gateway.cmd('cd /home/mininet/FoT-Simulation; python2.7 FoT-StreamGateway.py -n '+ g[i].name + ' -i ' + ass[i].server +' -p 9092 > gateway-log-'+g[i].name+' &')	
 		
 		sleep(5)
 
@@ -214,8 +215,8 @@ def init_flow(net):
 		for j in range(0,len(ass)):
 			if(g[i].name==ass[j].name_gateway):
 				print(g[i].name)
-				print("mosquitto_pub -t 'dev/"+ass[j].name+"' -m 'FLOW INFO temperatureSensor {collect:1000,publish:1000}'")
-				net.get(g[i].name).cmd("mosquitto_pub -t 'dev/"+ass[j].name+"' -m 'FLOW INFO temperatureSensor {collect:1000,publish:1000}'")
+				print("mosquitto_pub -t 'dev/"+ass[j].name+"' -m 'FLOW INFO temperatureSensor {collect:"+ ass[j].collect +",publish:"+ ass[j].collect +"}'")
+				net.get(g[i].name).cmd("mosquitto_pub -t 'dev/"+ass[j].name+"' -m 'FLOW INFO temperatureSensor {collect:"+ ass[j].collect +",publish:"+ ass[j].collect +"}'")
 				time.sleep(0.2)
 
 
