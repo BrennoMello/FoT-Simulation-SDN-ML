@@ -10,7 +10,7 @@ Published in: Biometrika 41.1/2 (1954): 100-115.
 URL: http://www.jstor.org/stable/2333009
 """
 
-from .detector import SuperDetector
+from detector import SuperDetector
 
 
 class PH(SuperDetector):

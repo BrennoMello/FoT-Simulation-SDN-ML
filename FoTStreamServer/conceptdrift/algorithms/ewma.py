@@ -12,13 +12,13 @@ URL: https://arxiv.org/pdf/1212.6018.pdf
 
 import math
 
-from .detector import SuperDetector
+from detector import SuperDetector
 import cmath
 
 class EWMA(SuperDetector):
     """The Exponentially Weighted Moving Average (EWMA) drift detection method class."""
 
-    def __init__(self, min_instance=30, lambda_=0.5):
+    def __init__(self, min_instance=50, lambda_=1):
 
         super(EWMA, self).__init__()
 

@@ -8,6 +8,8 @@ sys.path.insert(0, '/home/mininet/FoT-Simulation/FoTStreamServer/tsDeep')
 sys.path.insert(0, '/home/mininet/FoT-Simulation/FoTStreamServer/conceptdrift/algorithms/')
 import series
 import cusum
+import page_hinkley
+import ewma
 import gc
 import json
 #import pywt
@@ -76,8 +78,9 @@ class SensorKafkaConsumer(object):
 		else:
 			self.gatewaySensoresData[jsonData["gatewayID"]] = []
 
-			self.dicDetectors[jsonData["gatewayID"]] = cusum.CUSUM()
-
+			#self.dicDetectors[jsonData["gatewayID"]] = cusum.CUSUM()
+			self.dicDetectors[jsonData["gatewayID"]] =	page_hinkley.PH() 
+			#self.dicDetectors[jsonData["gatewayID"]] = ewma.EWMA()
 			self.modelsLSTM[jsonData["gatewayID"]] = series.modelLSTM(jsonData["gatewayID"])
 			self.inicializationModel[jsonData["gatewayID"]] = False
 			#self.verifyTrain[jsonData["gatewayID"]] == False

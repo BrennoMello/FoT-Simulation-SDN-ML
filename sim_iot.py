@@ -130,7 +130,7 @@ def init_sensors(net):
 		term = net.get(d[i].name)
 		#term.cmd('screen -S virtual-dev')
 		#term.cmd('screen -r virtual-dev')
-		term.cmd('cd /home/mininet/FoT-Simulation; python2.7 virtual_dev.py -n '+ass[i].name+' -s temperatureSensor -p '+args.port+' -i '+ass[i].gateway+' -d '+args.direc+ ' -m  ' + d[i].moteid +' > virtual-device-'+ d[i].name +'&')
+		term.cmd('cd /home/mininet/projeto_ml/FoT-Stream_Simulation; python2.7 virtual_dev.py -n '+ass[i].name+' -s temperatureSensor -p '+args.port+' -i '+ass[i].gateway+' -d '+args.direc+ ' -m  ' + d[i].moteid +' > virtual-device-'+ d[i].name +'&')
 
 
 	time.sleep(7)
@@ -163,12 +163,12 @@ def init_gateways(net):
 		#iniciar mosquitto se precisar, comentado por padrao
 		gateway = net.get(g[i].name)
 		gateway.cmd('mosquitto &')
-		gateway.cmd('cd /home/mininet/FoT-Simulation; python2.7 sc_net.py -n '+g[i].name+' &')
-		time.sleep(5)
-		print('python2.7 FoT-StreamGateway.py -n '+ g[i].name + ' -i ' + ass[i].server +' -p 9092 > gateway-log-'+g[i].name+ ' &')
+		#gateway.cmd('cd /home/mininet/FoT-Simulation; python2.7 sc_net.py -n '+g[i].name+' &')
+		#time.sleep(5)
+		#print('python2.7 FoT-StreamGateway.py -n '+ g[i].name + ' -i ' + ass[i].server +' -p 9092 > gateway-log-'+g[i].name+ ' &')
 		#gateway.cmd('cd /home/mininet/FoT-Simulation; python2.7 FoT-StreamGateway.py -n '+ g[i].name + ' -i ' + ass[i].server +' -p 9092 > gateway-log-'+g[i].name+' &')	
 		
-		sleep(5)
+		sleep(2)
 
 	
 	#for i in range(0,len(g)):
@@ -235,7 +235,7 @@ if __name__ == '__main__':
 		# Configurar e iniciar comunicacao externa
 		rootnode = connectToInternet( net )
 		
-		init_server(net)
+		#init_server(net)
 		init_gateways(net)
 		init_sensors(net)
 		
@@ -245,8 +245,8 @@ if __name__ == '__main__':
 		CLI( net )
 		# Shut down NAT
 		stopNAT( rootnode )
-		stop_gateways(net)
-		stop_servers(net)
+		#stop_gateways(net)
+		#stop_servers(net)
 		time.sleep(3)
 		net.stop()
 	except Exception as inst:
