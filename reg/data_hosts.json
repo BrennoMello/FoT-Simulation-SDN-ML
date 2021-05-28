@@ -1,13 +1,3 @@
 {"type":"gateway","name":"h1","name_iot":"gateway01","ip":"10.0.0.1","state":"active"}
 {"type":"device","name":"h2","name_iot":"ufbaino01","ip":"10.0.0.2","state":"active","moteid":"01"}
 {"type":"device","name":"h3","name_iot":"ufbaino02","ip":"10.0.0.3","state":"active","moteid":"02"}
-{"type":"device","name":"h4","name_iot":"ufbaino03","ip":"10.0.0.4","state":"active","moteid":"03"}
-{"type":"gateway","name":"h5","name_iot":"gateway02","ip":"10.0.0.5","state":"active"}
-{"type":"device","name":"h6","name_iot":"ufbaino04","ip":"10.0.0.6","state":"active","moteid":"04"}
-{"type":"device","name":"h7","name_iot":"ufbaino05","ip":"10.0.0.7","state":"active","moteid":"09"}
-{"type":"device","name":"h8","name_iot":"ufbaino06","ip":"10.0.0.8","state":"active","moteid":"06"}
-{"type":"device","name":"h9","name_iot":"ufbaino07","ip":"10.0.0.9","state":"active","moteid":"07"}
-{"type":"device","name":"h10","name_iot":"ufbaino08","ip":"10.0.0.10","state":"active","moteid":"08"}
-{"type":"device","name":"h11","name_iot":"ufbaino09","ip":"10.0.0.11","state":"active","moteid":"09"}
-{"type":"device","name":"h12","name_iot":"ufbaino10","ip":"10.0.0.12","state":"active","moteid":"10"}
-{"type":"server","name":"h13","name_iot":"server01","ip":"10.0.0.13","state":"active"}

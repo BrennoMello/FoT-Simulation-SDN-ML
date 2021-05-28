@@ -22,6 +22,7 @@ from memory_profiler import profile
 
 import numpy as np
 import pandas as pd
+from pandas import concat
 
 import time
 import json
@@ -63,7 +64,31 @@ class modelLSTM(object):
 
 		return df
 
-
+	# convert series to supervised learning
+	def series_to_supervised(self, data, n_in=1, n_out=1, dropnan=True):
+		n_vars = 1 if type(data) is list else data.shape[1]
+		df = pd.DataFrame(data)
+		cols, names = list(), list()
+		# input sequence (t-n, ... t-1)
+		for i in range(n_in, 0, -1):
+			cols.append(df.shift(i))
+			names += [('var%d(t-%d)' % (j+1, i)) for j in range(n_vars)]
+		# forecast sequence (t, t+1, ... t+n)
+		for i in range(0, n_out):
+			cols.append(df.shift(-i))
+			if i == 0:
+				names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
+			else:
+				names += [('var%d(t+%d)' % (j+1, i)) for j in range(n_vars)]
+		# put it all together
+		agg = concat(cols, axis=1)
+		agg.columns = names
+		# drop rows with NaN values
+		if dropnan:
+			agg.dropna(inplace=True)
+		return agg
+	
+	
 	# create a differenced series
 	def difference(self, dataset, interval=1):
 		diff = list()
@@ -101,7 +126,7 @@ class modelLSTM(object):
 		model = Sequential()
 		model.add(LSTM(self.neurons, batch_input_shape=(self.batch_size,
 												   1,
-												   1), stateful=True))
+												   3), stateful=True))
 		model.add(Dense(2))
 		model.add(Dense(1))
 		model.compile(loss='mean_squared_error', optimizer='adam')
@@ -353,21 +378,27 @@ class modelLSTM(object):
 	def create_model(self, input_data):
 		# load dataset
 		#series = pd.read_csv('data/input/t.csv', header=0, parse_dates=[0], index_col=0, squeeze=True)
-		series = pd.DataFrame(input_data)
+		#series = pd.DataFrame(input_data)
 		
-		print("transform data to be stationary")
-		raw_values = series.values
-		diff_values = self.difference(raw_values, 1)
+		#print("transform data to be stationary")
+		#raw_values = series.values
+		#diff_values = self.difference(raw_values, 1)
 
 		print("transform data to be supervised learning") 
-		supervised = self.timeseries_to_supervised(diff_values, 1)
+		#supervised = self.timeseries_to_supervised(diff_values, 1)
+		supervised = self.series_to_supervised(input_data)
+		supervised.drop(supervised.columns[[3, 4]], axis=1, inplace=True)
+		print(supervised)
 		supervised_values = supervised.values
 		
 		print("split data into train and test-sets")
 		train, test = supervised_values[0:-12], supervised_values[-12:]
 
+		print(train)
+
 		print("transform the scale of the data")
 		scaler, train_scaled, test_scaled = self.scale(train, test)
+		print(train_scaled.shape)
 
 		if(self.init_model_status):
 			print("Print before of init "  + str(self.init_model_status))
@@ -385,7 +416,7 @@ class modelLSTM(object):
 			self.model = self.fit_lstm(train_scaled)
 		
 		print("forecast the entire training dataset to build up state for forecasting")
-		train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
+		train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 3)
 		
 		self.model.predict(train_reshaped, batch_size=1)
 

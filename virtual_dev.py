@@ -7,9 +7,12 @@ import random
 from threading import Thread
 import argparse
 import fileinput
-import data_set 
+import data_set
 import logging
 from traceback import print_exc
+from skmultiflow.drift_detection import PageHinkley
+
+
 
 ############## Parse Arguments
 parser = argparse.ArgumentParser(prog='virtual_device', usage='%(prog)s [options]', description='Virtual Device')
@@ -36,9 +39,13 @@ direc=args.direc
 dataSet = None
 moteid = args.mote
 logging.basicConfig(filename = 'app.log', level = logging.INFO)
+window_sensor = list()
+ph = PageHinkley()
+
 
 #json to Object
 class to_object(object):
+	print("json")
 	def __init__(self, j):
 		self.__dict__ = json.loads(j)
 
@@ -67,8 +74,8 @@ class Th(Thread):
 					ini=timeit.default_timer()
 					a=self.publish()
 					fim=timeit.default_timer()
-					print self.get_time_publish()
-					print float(fim-ini)
+					print (self.get_time_publish())
+					print (float(fim-ini))
 					#print float(self.get_time_publish())-float(fim-ini)
 					time.sleep(float(self.get_time_publish())-float(fim-ini))
 					
@@ -81,38 +88,85 @@ class Th(Thread):
 	
 	def get_value(self):
 		return self.dataSetReader.next_value(sensorName)
+		
 		#return str(int(random.randint(18,37)))
-	
+		
+	def window_check(self, data):
+		global window_sensor, ph
+		change = False
+		window_sensor.append(data)
+		if len(window_sensor) == 50:
+			for data in window_sensor:
+				ph.add_element(data)
+				if ph.detected_change():
+					print('Change has been detected in data: ')
+					change = True
+			#window_sensor = []
+		
+		return change
+		
 	def get_time_publish(self):
 		global publish_msg
 		return str(publish_msg/1000)
 
 	def publish(self):
-		global tatu_message_type, args, collect_msg, publish_msg
+		global tatu_message_type, args, collect_msg, publish_msg, window_sensor
 		
-		if(tatu_message_type=="flow"):
-			a= "{\"CODE\":\"POST\",\"METHOD\":\"FLOW\",\"HEADER\":{\"NAME\":\""+str(args.name)+"\"},\"BODY\":{\""+str(args.sensor)+"\":[\""+str(self.get_value())+"\"],\"FLOW\":{\"publish\":"+str(publish_msg)+",\"collect\":"+str(collect_msg)+"}}}"
+		new_value = self.get_value()
+		print("Valor lido")
+		print(new_value)
+		change = self.window_check(new_value)
+		
+		if(tatu_message_type=="flow" and len(window_sensor) == 50):
+			#colocar o change no body
+			# {"CODE":"POST","METHOD":"FLOW","HEADER":{"NAME":"ufbaino16"},"BODY":{"conceptDrift": +change+, "temperatureSensor":["19.98", "19.55"],"FLOW":{"publish":1000,"collect":1000}}}
+			#a= "{\"CODE\":\"POST\",\"METHOD\":\"FLOW\",\"HEADER\":{\"NAME\":\""+str(args.name)+"\"},\"BODY\":{\""+str(args.sensor)+"\":[\""+str(window_sensor)+"\"],\"FLOW\":{\"publish\":"+str(publish_msg)+",\"collect\":"+str(collect_msg)+"}}}"
+			#Nova string Ernando
+			a= "{\"CODE\":\"POST\",\"METHOD\":\"FLOW\",\"HEADER\":{\"NAME\":\""+str(args.name)+"\"},\"BODY\":{\"conceptDrift\":\""+str(change)+"\",\""+str(args.sensor)+"\":\""+str(window_sensor)+"\",\"FLOW\":{\"publish\":"+str(publish_msg)+",\"collect\":"+str(collect_msg)+"}}}"
 			print(a)
 			client.publish('dev/'+args.name,a)
+			window_sensor = []
 			
+			#Obter os dados recebidos da mensagem TATU considerando que a mensagem esta na variavel 'a'
+			#obj=to_object(a)
+			
+			#Nome do sensor
+			#print(obj.HEADER['NAME'])
+			
+			#Valor do conecpt Drift como Boolean e não como string
+			#print(eval(obj.BODY['conceptDrift']))
+			
+			#retorna a janela de dados em formato vetor e não como string
+			#window_data=obj.BODY['temperatureSensor'].replace('[','').replace(']','').split(',')
+			#print(window_data[0])
+			#print(window_data)
 
 def config_publish_collect(st,name):
 	global publish_msg,collect_msg, args
-	print "Init storage flow"
+	print ("Init storage flow")
 	st=st.replace('FLOW INFO '+args.sensor,'')
+	print("c0")
 	st=st.replace("collect","\"collect\"")
 	st=st.replace("publish","\"publish\"")
+	print("c1")
 	name=name.replace('dev/','')
-	ob=to_object(st)
-	publish_msg=int(ob.publish)
-	collect_msg=int(ob.collect)
+	#st=st.replace(' ','')
+	#print(st)
+	#ob=to_object(st)
+	print("c2")
+	#publish_msg=int(ob.publish)
+	#collect_msg=int(ob.collect)
+	publish_msg=4000
+	collect_msg=4000	
+	#print("chama 2",publish_msg," complemento",collect_msg)
 		
 def catch_message(msg,topic):
 	global thread_use, tatu_message_type, args, dataSet
 	#print(msg)
-	
-	if(msg.find('FLOW INFO '+args.sensor+' {collect')==0 and topic.find('dev/'+args.name)==0):
+	print(msg.find('FLOW INFO '+args.sensor+' {collect'))
+	if(msg.find('FLOW INFO '+args.sensor+' {collect')!=-1 and topic.find('dev/'+args.name)!=-1):
 		#iniciar flow via thread
+		print('chama')
 		try:		
 			tatu_message_type="flow"
 			print(tatu_message_type)
@@ -131,8 +185,10 @@ def catch_message(msg,topic):
 
 
 def on_connect(client, userdata, flags, rc):
+	print('conectou')
 	global topicSubscribe, args
     #automatic subscribe
+	print('conectou')
 	client.subscribe(topicSubscribe)
 	
 	
@@ -146,24 +202,25 @@ def on_message(client, userdata, msg):
 	
 def config_mqtt():
 	global client, dataSet
-	try:
-			
-			print("Init Virtual Device")
-			#estatico para todos sensores
-			print(direc)
-			print("Sensor name: "+sensorName)
-			#dataSet = data_set.DataSetReader(direc)
-			#print("data set open:  "+ str(dataSet.next_value(sensorName))
-			client.on_connect = on_connect
-			client.on_message = on_message
+	try:	
+		print("Init Virtual Device")
+		#estatico para todos sensores
+		print(direc)
+		print(portBroker)
+		print("Sensor name: "+str(sensorName))
+		#dataSet = data_set.DataSetReader(direc)
+		#print("data set open:  "+ str(dataSet.next_value(sensorName))
+		client.on_connect = on_connect
+		client.on_message = on_message
+		print('Connect')
 
-			client.connect(broker, portBroker, keepAliveBroker)
-			client.loop_forever()
+		client.connect(broker, int(portBroker), keepAliveBroker)
+		client.loop_forever()
 	except Exception as inst:
-			print(inst)
-			logging.exception(str(inst))
-			print "\nCtrl+C leav..."
-			sys.exit(0)
+		print(inst)
+		logging.exception(str(inst))
+		print ("\nCtrl+C leav...")
+		sys.exit(0)
 			
 ###########Main
 config_mqtt()

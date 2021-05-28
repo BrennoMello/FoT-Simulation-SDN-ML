@@ -1,10 +1,2 @@
 {"name":"ufbaino01","ip":"10.0.0.2","type":"temperature","gateway":"10.0.0.1","name_gateway":"h1","collect":"4000"}
 {"name":"ufbaino02","ip":"10.0.0.3","type":"temperature","gateway":"10.0.0.1","name_gateway":"h1","collect":"6000"}
-{"name":"ufbaino03","ip":"10.0.0.4","type":"temperature","gateway":"10.0.0.1","name_gateway":"h1","collect":"8000"}
-{"name":"ufbaino04","ip":"10.0.0.6","type":"temperature","gateway":"10.0.0.5","name_gateway":"h5","collect":"4000"}
-{"name":"ufbaino05","ip":"10.0.0.7","type":"temperature","gateway":"10.0.0.5","name_gateway":"h5","collect":"6000"}
-{"name":"ufbaino06","ip":"10.0.0.8","type":"temperature","gateway":"10.0.0.5","name_gateway":"h5","collect":"8000"}
-{"name":"ufbaino07","ip":"10.0.0.9","type":"temperature","gateway":"10.0.0.5","name_gateway":"h5","collect":"4000"}
-{"name":"ufbaino08","ip":"10.0.0.10","type":"temperature","gateway":"10.0.0.5","name_gateway":"h5","collect":"6000"}
-{"name":"ufbaino09","ip":"10.0.0.11","type":"temperature","gateway":"10.0.0.1","name_gateway":"h1","collect":"4000"}
-{"name":"ufbaino10","ip":"10.0.0.12","type":"temperature","gateway":"10.0.0.1","name_gateway":"h1","collect":"6000"}
