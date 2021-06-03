@@ -11,6 +11,7 @@ import data_set
 import logging
 from traceback import print_exc
 from skmultiflow.drift_detection import PageHinkley
+from skmultiflow.drift_detection.adwin import ADWIN
 
 
 
@@ -40,7 +41,8 @@ dataSet = None
 moteid = args.mote
 logging.basicConfig(filename = 'app.log', level = logging.INFO)
 window_sensor = list()
-ph = PageHinkley()
+ph = PageHinkley(min_instances=30, delta=0.005, threshold=5, alpha=0.9999)
+adwin = ADWIN()
 
 
 #json to Object
@@ -92,12 +94,14 @@ class Th(Thread):
 		#return str(int(random.randint(18,37)))
 		
 	def window_check(self, data):
-		global window_sensor, ph
+		global window_sensor, ph, adwin
 		change = False
 		window_sensor.append(data)
-		if len(window_sensor) == 50:
+		
+		if len(window_sensor) >= 35:
 			for data in window_sensor:
 				ph.add_element(data)
+				print("Tentando Detectar")
 				if ph.detected_change():
 					print('Change has been detected in data: ')
 					change = True
@@ -116,8 +120,9 @@ class Th(Thread):
 		print("Valor lido")
 		print(new_value)
 		change = self.window_check(new_value)
-		
-		if(tatu_message_type=="flow" and len(window_sensor) == 50):
+		print(change)
+		#if(tatu_message_type=="flow" and len(window_sensor) >= 35 and change == True):
+		if(tatu_message_type=="flow" and len(window_sensor) >= 35):
 			#colocar o change no body
 			# {"CODE":"POST","METHOD":"FLOW","HEADER":{"NAME":"ufbaino16"},"BODY":{"conceptDrift": +change+, "temperatureSensor":["19.98", "19.55"],"FLOW":{"publish":1000,"collect":1000}}}
 			#a= "{\"CODE\":\"POST\",\"METHOD\":\"FLOW\",\"HEADER\":{\"NAME\":\""+str(args.name)+"\"},\"BODY\":{\""+str(args.sensor)+"\":[\""+str(window_sensor)+"\"],\"FLOW\":{\"publish\":"+str(publish_msg)+",\"collect\":"+str(collect_msg)+"}}}"

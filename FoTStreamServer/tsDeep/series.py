@@ -37,7 +37,7 @@ class modelLSTM(object):
 		self.gateway = gateway
 		self.difference_plot = []
 		self.neurons = 4
-		self.batch_size =1
+		self.batch_size = 1
 		self.nb_epoch = 100
 		self.init_model_status = False
 		self.path_log = ""
@@ -126,7 +126,7 @@ class modelLSTM(object):
 		model = Sequential()
 		model.add(LSTM(self.neurons, batch_input_shape=(self.batch_size,
 												   1,
-												   3), stateful=True))
+												   2), stateful=True))
 		model.add(Dense(2))
 		model.add(Dense(1))
 		model.compile(loss='mean_squared_error', optimizer='adam')
@@ -190,7 +190,7 @@ class modelLSTM(object):
 		#	with self.Graph.as_default():			
 		self.model = self.create_model_denses()
 				#loaded_model = load_model("model-"+ gateway_model +".h5")
-		self.model.load_weights("model-"+ gateway_model +".h5")
+		self.model.load_weights("/home/mininet/projeto_ml/FoT-Stream_Simulation/FoTStreamServer/kafkaMqtt/model-"+ gateway_model +".h5")
 				
 		print("Loaded model from disk")
 		
@@ -216,6 +216,10 @@ class modelLSTM(object):
 	# fit an LSTM network to training data
 	def fit_lstm(self, train):
 		X, y = train[:, 0:-1], train[:, -1]
+		print("Data")
+		print(X)
+		print("Data Y")
+		print(y)
 		X = X.reshape(X.shape[0], 1, X.shape[1])
 		
 
@@ -286,16 +290,19 @@ class modelLSTM(object):
 		
 		print("transform data to be stationary")
 		raw_values = series.values
-		diff_values = self.difference(raw_values, 1)
+		#diff_values = self.difference(raw_values, 1)
 		
-		print("transform data to be supervised learning") 
-		supervised = self.timeseries_to_supervised(diff_values, 1)
-		supervised_values = supervised.values
-		print("supervised ")
-		print(supervised_values)
+		#print("transform data to be supervised learning") 
+		#supervised = self.timeseries_to_supervised(diff_values, 1)
+		#supervised = self.series_to_supervised(input_data)
+		#print(supervised)
+		#supervised.drop(supervised.columns[[2,3]], axis=1, inplace=True)
+		#supervised_values = supervised.values
+		#print("supervised ")
+		#print(supervised_values)
 		
 		print("split data into train and test-sets")
-		train, test = supervised_values[0:-12], supervised_values[-12:]
+		train, test = raw_values[0:-12], raw_values[-12:]
 		print("Train")
 		print(train)
 		print("Test")
@@ -305,41 +312,60 @@ class modelLSTM(object):
 		scaler, train_scaled, test_scaled = self.scale(train, test)
 		
 		print("forecast the entire training dataset to build up state for forecasting")
-		train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
+		#train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
 		#with self.Session.as_default():
 		#	with self.Graph.as_default():
-		self.model = self.open_model(self.gateway)
+		self.model = self.open_model(self.gateway)	
+		
+		#train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 4)
+		
+		train_reshaped = train_scaled.reshape(train_scaled.shape[0], 1, train_scaled.shape[1])
 		
 		#with self.Session.as_default():
 		#	with self.Graph.as_default():
 		print(self.model.predict(train_reshaped, batch_size=1))
-
+		yhat_temp = self.model.predict(train_reshaped, batch_size=1)
+		
 		print("walk-forward validation on the test data")
+		print(train_reshaped.shape)
+		train_reshaped = train_scaled.reshape(-1, 2)
+		
+		print(train_reshaped)
 		predictions = []
+		for i in range(len(train_reshaped)):
+			#print(train_reshaped[i, 0:-1])
+			#print(yhat_temp[i].shape)
+			yhat = self.invert_scale(scaler, train_reshaped[i, 0:-1], yhat_temp[i])
+			predictions.append(yhat)
+			#print(yhat[0])
+		"""
 		expections = []
 		for i in range(len(test_scaled)):
 			print("make one-step forecast")
-			X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
+			X = test_scaled[i, 0:-1]
+			print("Value X")
+			print(test_scaled)
+			
 			yhat = self.forecast_lstm(X)
 
 			print("invert scaling")
 			yhat = self.invert_scale(scaler, X, yhat)
 
-			print("invert differencing")
-			yhat = self.inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
+			#print("invert differencing")
+			#yhat = self.inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
 
 			print("store forecast")
 			predictions.append(yhat[0])
 
 			expected = raw_values[len(train) + i + 1]
-			expections.append(expected[0])
+			expections.append(expected[1])
 			
 			#self.difference_plot.append(abs(expected-yhat))
 			
 			print(f'Month={i + 1}, Predicted={yhat}, Expected={expected}')
-
+		"""
 		
-		self.permance_calc(expections, predictions)
+		#self.permance_calc(expections, predictions)
 		#print("report performance")
 		#rmse = math.sqrt(mean_squared_error(raw_values[-12:], predictions))
 		
@@ -351,7 +377,7 @@ class modelLSTM(object):
 		#print("line plot of observed vs predicted")
 		#now = datetime.now()
 		#timestamp = datetime.timestamp(now)
-		print('Timestamp: {:%Y-%m-%d %H:%M:%S}'.format(datetime.now()))
+		#print('Timestamp: {:%Y-%m-%d %H:%M:%S}'.format(datetime.now()))
 		
 		#plt.plot(raw_values[-12:], label='Observed')
 		#plt.plot(predictions, label='Predicted')
@@ -372,7 +398,9 @@ class modelLSTM(object):
 		
 		#print("transform the scale of the data")
 		#scaler, train_scaled, test_scaled = self.scale(train, test)
-			
+		
+		print(predictions)
+		return predictions
 
 	@profile
 	def create_model(self, input_data):
@@ -381,13 +409,13 @@ class modelLSTM(object):
 		#series = pd.DataFrame(input_data)
 		
 		#print("transform data to be stationary")
-		#raw_values = series.values
+		raw_values = input_data.values
 		#diff_values = self.difference(raw_values, 1)
 
 		print("transform data to be supervised learning") 
 		#supervised = self.timeseries_to_supervised(diff_values, 1)
 		supervised = self.series_to_supervised(input_data)
-		supervised.drop(supervised.columns[[3, 4]], axis=1, inplace=True)
+		supervised.drop(supervised.columns[[2, 3, 4]], axis=1, inplace=True)
 		print(supervised)
 		supervised_values = supervised.values
 		
@@ -398,7 +426,7 @@ class modelLSTM(object):
 
 		print("transform the scale of the data")
 		scaler, train_scaled, test_scaled = self.scale(train, test)
-		print(train_scaled.shape)
+		#print(train_scaled.shape)
 
 		if(self.init_model_status):
 			print("Print before of init "  + str(self.init_model_status))
@@ -416,7 +444,19 @@ class modelLSTM(object):
 			self.model = self.fit_lstm(train_scaled)
 		
 		print("forecast the entire training dataset to build up state for forecasting")
-		train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 3)
+		#print(train_scaled[:, 0])
+		
+		X, y = train_scaled[:, 0:-1], train_scaled[:, -1]
+		print("Data")
+		print(X)
+		print("Data Y")
+		print(y)
+		X = X.reshape(X.shape[0], 1, X.shape[1])
+		
+		
+		#train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 4)
+		
+		train_reshaped = X
 		
 		self.model.predict(train_reshaped, batch_size=1)
 
@@ -435,20 +475,20 @@ class modelLSTM(object):
 			print("invert scaling")
 			yhat = self.invert_scale(scaler, X, yhat)
 
-			print("invert differencing")
-			yhat = self.inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
+			#print("invert differencing")
+			#yhat = self.inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
 
 			print("store forecast")
-			predictions.append(yhat[0])
+			predictions.append(yhat)
 			
 			expected = raw_values[len(train) + i + 1]
-			expections.append(expected[0])
+			expections.append(expected[2])
 			
 			print("expected")
 			print(expected)
 			
 			print("yhat")
-			print (yhat[0])
+			print (yhat)
 			
 			#self.difference_plot.append(abs(expected-yhat))
 			

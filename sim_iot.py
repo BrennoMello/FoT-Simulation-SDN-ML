@@ -130,7 +130,7 @@ def init_sensors(net):
 		term = net.get(d[i].name)
 		#term.cmd('screen -S virtual-dev')
 		#term.cmd('screen -r virtual-dev')
-		term.cmd('cd /home/mininet/projeto_ml/FoT-Stream_Simulation; python3 virtual_dev.py -n '+ass[i].name+' -s temperatureSensor -p '+args.port+' -i '+ass[i].gateway+' -d '+args.direc+ ' -m  ' + d[i].moteid +' > virtual-device-'+ d[i].name +'&')
+		#term.cmd('cd /home/mininet/projeto_ml/FoT-Stream_Simulation; python3 virtual_dev.py -n '+ass[i].name+' -s temperatureSensor -p '+args.port+' -i '+ass[i].gateway+' -d '+args.direc+ ' -m  ' + d[i].moteid +' > virtual-device-'+ d[i].name +'&')
 
 
 	time.sleep(7)

@@ -3,11 +3,16 @@ import threading
 from threading import Thread
 import sys
 sys.path.insert(0, '/home/openflow/predict')
+sys.path.insert(0, '/home/mininet/projeto_ml/FoT-Stream_Simulation/FoTStreamServer/tsDeep')
 import paho.mqtt.client as mqtt
 from reg import utils_hosts 
 import timeit
 import os
 import random
+import numpy as np
+import json
+import series
+import pandas as pd
 
 
 PortaBroker = 1883
@@ -55,7 +60,7 @@ def thread_flow(name,value):
 			for i in range(0,len(l_sensors)):
 				if(float(l_sensors[i].current_time)>=(float(l_sensors[i].predict_time)*0.85)):	
 					print("**** Installing Flow Device:",l_sensors[i].name_device, "Predict time:", l_sensors[i].predict_time,"Current time:",l_sensors[i].current_time)
-					os.system('python install_flow.py -g '+l_sensors[i].gateway_ip+' -s '+l_sensors[i].sensor_ip+' &')
+					#os.system('python install_flow.py -g '+l_sensors[i].gateway_ip+' -s '+l_sensors[i].sensor_ip+' &')
 					remove_flow(l_sensors[i].gateway_ip,l_sensors[i].sensor_ip)
 					break
 				#print(l_sensors[i].name_device, "Current time:", l_sensors[i].current_time,"Predict Time:",l_sensors[i].predict_time)
@@ -63,7 +68,7 @@ def thread_flow(name,value):
 		except IndexError:
 			continue
 		except ValueError:
-			print "ValueError Resolved"
+			print ("ValueError Resolved")
 		#	continue
 		except ValueError:
 			continue
@@ -81,7 +86,7 @@ def thread(name,gateway):
 	def print_list(name):
 		for i in range(0,len(l_sensors)):
 			if(l_sensors[i].name_device==name):
-				print "Installing "+l_sensors[i].name_device+" Publish "+str(l_sensors[i].publish_time)+" Name gateway "+l_sensors[i].name_gateway+" Current Time "+str(l_sensors[i].current_time)
+				print ("Installing "+l_sensors[i].name_device+" Publish "+str(l_sensors[i].publish_time)+" Name gateway "+l_sensors[i].name_gateway+" Current Time "+str(l_sensors[i].current_time))
 	
 	def message_to_publish(msg):
 		
@@ -125,6 +130,35 @@ def thread(name,gateway):
 				#pub=message_to_publish(message)
 				#print("Breno eh mengao")
 				#print(pub)
+				
+				#Obter os dados recebidos da mensagem TATU considerando que a mensagem esta na variavel 'a'
+				#message=message.encode('utf-8')
+				#index=0
+				#message=message[0 : index : ] + message[index + 1 : :]
+				print(message)
+				obj=utils_hosts.to_object(message)
+				#msg_json=json.loads(message)
+				#msg_json=json.loads('{"CODE":"POST","METHOD":"FLOW","HEADER":{"NAME":"ufbaino01"},"BODY":{"conceptDrift":"False","temperatureSensor":"[21.0664, 21.086, 21.0566, 21.0664, 21.0664, 21.0566, 21.1252, 21.1644, 21.184, 21.2624, 21.2722, 21.2722, 21.2918, 21.282, 21.3212, 21.331, 21.3408, 21.3212, 21.331, 21.3408, 21.3604, 21.3604, 21.3408, 21.3604, 21.38, 21.3996, 21.3996, 21.38, 21.38, 21.38, 21.331, 21.3114, 21.3016, 21.3212, 21.3408, 21.3408, 21.282, 21.2624, 21.2624, 21.2428, 21.2036, 21.2232, 21.233, 21.2232, 21.2036, 21.184, 21.1252, 21.1252, 21.1056, 21.0272]","FLOW":{"publish":4000,"collect":4000}}}')
+				#print(msg_json['HEADER'])
+				#Nome do sensor
+				print("Nome: "+obj.HEADER['NAME'])
+				
+				#Valor do conecpt Drift como Boolean e nao como string
+				#print(eval(obj.BODY['conceptDrift']))
+				
+				#retorna a janela de dados em formato vetor e nao como string
+				window_data=obj.BODY['temperatureSensor'].replace('[','').replace(']','').split(',')
+				#print(window_data[0])
+				window_data_np=np.array(window_data)
+				window_data_np=window_data_np.astype(float)	
+				window_data = window_data_np.tolist()
+				#print(window_data)
+				#print(getPredict(window_data))
+				predict=getPredict(window_data)
+				print(predict)
+				predict=np.mean(predict)
+				#print("Media")
+				print("Tempo predito para",name_device,"=",predict)
 				ob=Preditive_obj()
 				ob.name_device=name_device
 				ob.sensor_ip=utils_hosts.return_host_per_name(name_device).ip
@@ -132,7 +166,8 @@ def thread(name,gateway):
 				ob.name_gateway=name
 				ob.gateway_ip=utils_hosts.return_host_per_name(name).ip
 				ob.init_time=timeit.default_timer()
-				ob.predict_time=random.uniform(5, 25.0)
+				#ob.predict_time=random.uniform(5, 25.0)
+				ob.predict_time=predict
 				l_sensors.append(ob)
 				#print_list(name_device)
 		elif(topic.find('dev/')==0 and message.find("FLOW INFO temperatureSensor")==0):
@@ -145,7 +180,7 @@ def thread(name,gateway):
 		client.subscribe('#')
 		
 	def on_message(client, userdata, msg):
-		MensagemRecebida = str(msg.payload)
+		MensagemRecebida = msg.payload.decode('utf-8')
 		#print "Topico "+msg.topic+" Mensagem "+MensagemRecebida
 		catch_message(msg.topic,MensagemRecebida)
 		#print_list()
@@ -153,19 +188,42 @@ def thread(name,gateway):
 		##Continuar pegando o topico e verificando se o nome ja esta na lista
 	
 	##Settings to paho mqtt
-	print "Init "+name	
-	try:
-		client =mqtt.Client(client_id='', clean_session=True, userdata=None, protocol=mqtt.MQTTv31)
-		client.on_connect = on_connect
-		client.on_message = on_message
-		client.connect(gateway, PortaBroker, KeepAliveBroker)
-		client.loop_forever()
-	except KeyboardInterrupt:
-		print "\nCtrl+C saindo..."
-		sys.exit(0)
+	print ("Init "+name)	
+	#try:
+	client =mqtt.Client(client_id='', clean_session=True, userdata=None, protocol=mqtt.MQTTv31)
+	client.on_connect = on_connect
+	client.on_message = on_message
+	client.connect(gateway, PortaBroker, KeepAliveBroker)
+	client.loop_forever()
+	#except KeyboardInterrupt:
+	#	print "\nCtrl+C saindo..."
+	#	sys.exit(0)
+	#except Exception as e:
+	#	print(e)
+	#	sys.exit(0)
 ##END THREAD FUNCTIONS
 		
 
+def getPredict(window_data):
+		print("getPredict")
+		modelsLSTM={}
+		modelsLSTM['gateway01'] = series.modelLSTM('gateway01')
+		
+		print('------------  train for gateway --------------')
+								
+		#print("Complete List")
+		#print(self.gatewaySensoresData[indexGateway])
+		
+		df_data = pd.DataFrame(window_data)
+		df_data['concept'] = 1
+			
+		
+		
+		print(df_data)
+		#print("Try Traning neural network Gateway " + indexGateway)
+		
+		#modelsLSTM['gateway01'].create_model(df_data)
+		return modelsLSTM['gateway01'].calc_rmse(df_data)
 				
 ##start thread mqtt to each gateway
 gateways=utils_hosts.return_hosts_per_type('gateway')
@@ -186,9 +244,11 @@ for i in range(0,len(gateways)):
 
 #LOOP To keep the prompt
 while True:
-	try:
-		time.sleep(4)
-	except KeyboardInterrupt:
-		print "\nCtrl+C saindo..."
-		sys.exit(0)
-
+	#try:
+	time.sleep(4)
+	#except KeyboardInterrupt:
+	#	print "\nCtrl+C saindo..."
+	#	sys.exit(0)
+	#except Exception as e:
+	#	print(e)
+	#	sys.exit(0)

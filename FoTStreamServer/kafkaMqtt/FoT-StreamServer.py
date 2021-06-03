@@ -58,6 +58,7 @@ class SensorDataConsumer(object):
 		#self.kafka_consumer = Consumer(conf)
 		#print(kafka_local)
 		
+		self.init = True
 		self.gatewaySensoresData = {}
 		self.modelsLSTM = {}
 		self.dicDetectors = {}
@@ -111,7 +112,8 @@ class SensorDataConsumer(object):
 		file_log.write('\n')
 		#json.dump(json_log, file_log)
 		file_log.close()
-		
+	
+			
 	@profile
 	def check_windows(self, value, change, timestamp):
 		#global last_concept
@@ -132,11 +134,12 @@ class SensorDataConsumer(object):
 		window_data = window_data_np.tolist()
 		print(window_data)
 		df_data = pd.DataFrame(window_data)
-		if(change):
+		if(change == "True" or self.init == True):
 			df_data['concept'] = 1
 			self.last_delay = timestamp - self.last_concept 
 			df_data['delay'] = self.last_delay
 			last_concept = timestamp
+			self.init = False
 		else:
 			df_data['concept'] = 0
 			df_data['delay'] = self.last_delay
@@ -144,7 +147,10 @@ class SensorDataConsumer(object):
 		print(df_data)
 		#print("Try Traning neural network Gateway " + indexGateway)
 		
-		self.modelsLSTM['gateway01'].create_model(df_data)
+		df_data.to_csv('dataset_moteid-01.csv', mode='a', header=False)
+		
+		print("Save dataframe")
+		#self.modelsLSTM['gateway01'].create_model(df_data)
 				
 							
 		#self.gatewaySensoresData[indexGateway] = []
@@ -228,7 +234,7 @@ class SensorDataConsumer(object):
 				value = body['temperatureSensor']
 				change = body['conceptDrift']
 				
-				print(value)
+				print("change: ", change)
 				return value, change
 			except Exception as inst:
 				print(inst)
